@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather Dashboard</title>
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+</head>
+<body>
+    <div class="header">
+        <h2>Weather Dashboard</h2>
+    </div>
+    <div class="search">
+        <input type="text" id="search" placeholder="Enter city name">
+        <button id="search-btn">Search</button>
+    </div>
+    <div class="weather">
+        <div class="main-city-wrapper">
+            <div class="main-city-container" id="main-city-container">
+                <h1>Enter a city</h1>
+            </div>
+            <div class="forecast">
+                <h2>5 Day Forecast</h2>
+                <div class="forecast-list" id="forecast-list">
+                    <!-- cards for each day containing a weather icon and temperature will be added here -->
+                </div>
+            </div>
+        </div>
+        <div class="cities">
+            <h2>Forecast in other cities</h2>
+            <ul id="cities-list">
+                <!-- each city will be added here containing a weather icon, temperature and weather description -->
+            </ul>
+        </div>
+    </div>
+    <script>
+        let weatherData = {};
+
+        document.getElementById('search-btn').addEventListener('click', function() {
+            const cityName = document.getElementById('search').value;
+            if (cityName && weatherData[cityName]) {
+                updateMainCityWeatherInfo(weatherData[cityName].weather_data);
+                updateForecast(weatherData[cityName].forecast_data);
+            } else {
+                alert('City not found in data');
+            }
+        });
+
+        function fetchWeatherData() {
+            fetch('/api/weather')
+                .then(response => response.json())
+                .then(data => {
+                    weatherData = data;
+                    updateCitiesWeather();
+                })
+                .catch(error => console.error('Error fetching weather data:', error));
+        }
+
+        function updateMainCityWeatherInfo(data) {
+            const container = document.getElementById('main-city-container');
+            container.innerHTML = `
+                <div class="weather-info">
+                    <h2 id="main-city-name">${data.name}</h2>
+                    <p id="current-time">${new Date().toLocaleString()}</p>
+                    <div class="weather-temp-icon">
+                        <h2 id="temp">${data.main.temp}°C</h2>
+                        <img src="http://openweathermap.org/img/wn/${data.weather[0].icon}@2x.png" alt="Weather Icon" id="weather-icon">
+                    </div>
+                    <div class="weather-details">
+                        <div class="section1">
+                            <p id="weather-desc">${data.weather[0].description}</p>
+                            <p id="feels-like">Feels Like: ${data.main.feels_like}°C</p>
+                            <p id="humidity">Humidity: ${data.main.humidity}%</p>
+                            <p id="wind">Wind Speed: ${data.wind.speed} m/s</p>
+                        </div>
+                        <div class="section2">
+                            <p id="visibility">Visibility: ${data.visibility / 1000} km</p>
+                            <p id="pressure">Pressure: ${data.main.pressure} hPa</p>
+                            <p id="sunrise">Sunrise: ${new Date(data.sys.sunrise * 1000).toLocaleTimeString()}</p>
+                            <p id="sunset">Sunset: ${new Date(data.sys.sunset * 1000).toLocaleTimeString()}</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function updateForecast(forecast) {
+            const forecastList = document.getElementById('forecast-list');
+            forecastList.innerHTML = '';
+
+            const middayForecasts = forecast.list.filter(item => item.dt_txt.includes('12:00:00'));
+
+            middayForecasts.forEach(forecastItem => {
+                const forecastDate = new Date(forecastItem.dt_txt).toLocaleDateString();
+                const forecastTemp = forecastItem.main.temp;
+                const forecastIcon = forecastItem.weather[0].icon;
+
+                const forecastCard = document.createElement('div');
+                forecastCard.classList.add('forecast-item');
+                forecastCard.innerHTML = `
+                    <p>${forecastDate}</p>
+                    <img src="http://openweathermap.org/img/wn/${forecastIcon}@2x.png" alt="Weather Icon">
+                    <p>${forecastTemp}°C</p>
+                `;
+                forecastList.appendChild(forecastCard);
+            });
+        }
+
+        function updateCitiesWeather() {
+            const citiesList = document.getElementById('cities-list');
+            citiesList.innerHTML = '';
+
+            for (const city in weatherData) {
+                const cityData = weatherData[city].weather_data;
+                const cityItem = document.createElement('li');
+                cityItem.innerHTML = `
+                    <h3>${city}</h3>
+                    <img src="http://openweathermap.org/img/wn/${cityData.weather[0].icon}@2x.png" alt="Weather Icon">
+                    <div class="noflex-wrapper">
+                        <h6>${cityData.main.temp}°C</h6>
+                        <p>${cityData.weather[0].description}</p>
+                    </div>
+                `;
+                citiesList.appendChild(cityItem);
+            }
+        }
+
+        // Fetch weather data for all cities on page load
+        document.addEventListener('DOMContentLoaded', fetchWeatherData);
+    </script>
+</body>
+</html>
